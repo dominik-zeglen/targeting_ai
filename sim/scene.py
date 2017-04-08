@@ -9,7 +9,7 @@ from pickle import load, dump
 from ai import Agent
 
 res = (480, 480)
-fps = 30
+fps = 30 * 10
 colors = {
     'black': (0, 0, 0),
     'white': (255, 255, 255)
@@ -26,6 +26,7 @@ except:
     data = {'0' : {
         'shoot_angle': 0,
         'ast_angle': 0,
+        'ast_vel': 0,
         'hit': 1
     }}
 data_init_len = len(data)
@@ -152,10 +153,12 @@ class Sim:
                                             init_pos=(_radial(np.array((240, 240)) - (120, 0) - (16, 16), random() * 2 * 3.141))))
             self.entities[asteroid].set('on_deregister', spawn_asteroid)
             watcher.update(1, watcher.get(1) + 1)
+            watcher.update(2, random() - 0.5)
             return watcher.update(0, self.entities[asteroid].sim_id)
 
         watcher = Watcher()
         watcher.objects.append(1)
+        watcher.objects.append(0)
         watcher.objects.append(0)
 
         pg.font.init()
@@ -170,7 +173,6 @@ class Sim:
 
         asteroid = spawn_asteroid()
 
-        ast_speed = .4
         bullets_per_second = 2
         bullet_counter = 1
         agent = Agent().fit(data)
@@ -191,14 +193,16 @@ class Sim:
                 running = False
 
             # AI
-            if time() - counter_time > 1. / bullets_per_second:
+            if time() - counter_time > (1. / bullets_per_second) * 60 / fps:
                 counter_time = time()
-                a = agent.predict(np.asarray([_get_angle(self.get_entity(watcher.get(asteroid)).get('pos'))]).reshape(-1, 1))
+                a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(watcher.get(asteroid)).get('pos')),
+                                                         watcher.get(2)]).reshape(-1, 2)]))
                 # a = random() * 3.141 * 2
-                bullet_id = self.get_entity(char).fire(a, 7)
+                bullet_id = self.get_entity(char).fire(a, 3.5)
                 data[data_init_len + self.entities[bullet_id].get('sim_id')] = {
                     'shoot_angle': a,
                     'ast_angle': _get_angle(self.get_entity(watcher.get(asteroid)).get('pos')),
+                    'ast_vel': watcher.get(2),
                     'hit': 0
                 }
                 bullet_counter += 1
@@ -221,16 +225,17 @@ class Sim:
             font = pg.font.SysFont('arial', 15)
             self.screen.blit(font.render(str(watcher.get(1) * 1. / bullet_counter), 1, colors['white']), (0, 0))
 
+            # Move asteroid
             self.get_entity(watcher.get(asteroid)).set('pos',
                                                        _radial(self.get_entity(watcher.get(asteroid)).get('pos'),
-                                                               2 * 3.141 / fps * ast_speed) )
+                                                               2 * 3.141 / 30 * watcher.get(2)))
 
             self.sim()
             pg.display.flip()
 
-        # with open('sim/pickle_data/data.pck', 'wb+') as f:
-        #     print('Dumping')
-        #     dump(data, f)
+        with open('sim/pickle_data/data.pck', 'wb+') as f:
+            print('Dumping')
+            dump(data, f)
 
 
 def _radial(pos, angle, center=[x / 2 for x in res]):
