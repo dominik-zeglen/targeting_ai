@@ -7,6 +7,7 @@ from random import random
 from math import sin, cos, sqrt, atan2, exp
 from pickle import load, dump
 from ai import Agent
+from uuid import uuid4
 
 res = (480, 480)
 fps = 30 * 10
@@ -78,7 +79,7 @@ class Bullet(Entity):
                         self.appearance.get_size()) / 2) ** 2)) <= entity.get('hit_radius'):
                     self.sim.deregister(self.sim_id)
                     self.sim.deregister(entity.sim_id)
-                    data[data_init_len + self.sim_id]['hit'] = 1
+                    data[self.sim_id]['hit'] = 1
                     return entity.sim_id
 
 
@@ -121,12 +122,10 @@ class Sim:
         self.entities[0].set('displayable', False)
         self.entities[0].set('hit_radius', 0)
         self.entities[0].set('sim_id', 0)
-        self.id_counter = 1
 
     def register(self, entity):
         self.entities.append(entity)
-        entity.set('sim_id', self.id_counter)
-        self.id_counter += 1
+        entity.set('sim_id', str(uuid4()))
         return len(self.entities) - 1
 
     def deregister(self, index):
@@ -157,14 +156,20 @@ class Sim:
             return watcher.update(0, self.entities[asteroid].sim_id)
 
         watcher = Watcher()
+        # Asteroid sim_id
         watcher.objects.append(1)
+        # Kill counter
         watcher.objects.append(0)
+        # Asteroid velocity
         watcher.objects.append(0)
 
         pg.font.init()
+        font = pg.font.SysFont('arial', 15)
         start_time = time()
         counter_time = time()
+        learning_time = time()
         running = True
+        agent = Agent().fit(data)
 
         char = self.register(Controllable('sim/img/img1.png',
                                           self.screen,
@@ -175,7 +180,6 @@ class Sim:
 
         bullets_per_second = 2
         bullet_counter = 1
-        agent = Agent().fit(data)
 
         while running:
             try:
@@ -193,13 +197,17 @@ class Sim:
                 running = False
 
             # AI
+            if time() - learning_time > 5:
+                agent = Agent().fit(data)
+                learning_time = time()
+
             if time() - counter_time > (1. / bullets_per_second) * 60 / fps:
                 counter_time = time()
                 a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(watcher.get(asteroid)).get('pos')),
                                                          watcher.get(2)]).reshape(-1, 2)]))
                 # a = random() * 3.141 * 2
-                bullet_id = self.get_entity(char).fire(a, 3.5)
-                data[data_init_len + self.entities[bullet_id].get('sim_id')] = {
+                bullet_id = self.entities[char].fire(a, 3.5)
+                data[self.entities[bullet_id].get('sim_id')] = {
                     'shoot_angle': a,
                     'ast_angle': _get_angle(self.get_entity(watcher.get(asteroid)).get('pos')),
                     'ast_vel': watcher.get(2),
@@ -215,14 +223,18 @@ class Sim:
             pg.draw.line(self.screen, colors['black'], [240, 0], [240, 480])
             pg.draw.circle(self.screen, colors['black'], [240, 240], 136, 2)
 
+            # Draw angles
+            self.screen.blit(font.render(str(int(_get_angle((240, 0)) * 360 / 3.141 / 2)), 1, colors['black']), (235, 10))
+            self.screen.blit(font.render(str(int(_get_angle((240, 480)) * 360 / 3.141 / 2)), 1, colors['black']), (235, 460))
+            self.screen.blit(font.render(str(int(_get_angle((0, 240)) * 360 / 3.141 / 2)), 1, colors['black']), (10, 240))
+            self.screen.blit(font.render(str(int(_get_angle((480, 240)) * 360 / 3.141 / 2)), 1, colors['black']), (460, 220))
+
             # Draw FPS counter
             pg.draw.rect(self.screen, colors['black'], [400, 0, 480, 30])
-            font = pg.font.SysFont('arial', 15)
             self.screen.blit(font.render(str(self.clock.get_fps()), 1, colors['white']), (400, 0))
 
             # Draw kill counter
             pg.draw.rect(self.screen, colors['black'], [0, 0, 80, 30])
-            font = pg.font.SysFont('arial', 15)
             self.screen.blit(font.render(str(watcher.get(1) * 1. / bullet_counter), 1, colors['white']), (0, 0))
 
             # Move asteroid
