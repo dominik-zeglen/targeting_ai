@@ -5,7 +5,6 @@ from pygame.locals import *
 from time import time
 from random import random
 from math import sin, cos, sqrt, atan2, exp
-from sklearn.tree import DecisionTreeRegressor as DTR
 
 res = (480, 480)
 fps = 20
@@ -120,11 +119,12 @@ class Sim:
                                         self,
                                         init_pos=(np.array((240, 240)) - (120, 0))))
         self.get_entity(asteroid).set('on_deregister', print_hit)
-        ast_speed = 0
+        ast_speed = .3
 
         angles = []
-        decisions = [random() * 3.141 * 2]
-        clf = DTR()
+        speeds = [0]
+        decisions = []
+        hit = []
 
         while running:
             try:
@@ -144,7 +144,7 @@ class Sim:
             pg.draw.line(self.screen, colors['black'], [0, 240], [480, 240])
             pg.draw.line(self.screen, colors['black'], [240, 0], [240, 480])
 
-            ast_speed += sigmoid((random() - 0.5) * .3) - .5
+            ast_speed = ast_speed if random() > .025 else -ast_speed
             self.get_entity(asteroid).set('pos',
                                           _radial(self.get_entity(asteroid).get('pos'), 2 * 3.141 / fps * ast_speed))
 
