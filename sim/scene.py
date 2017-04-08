@@ -7,7 +7,7 @@ from random import random
 from math import sin, cos, sqrt, atan2, exp
 
 res = (480, 480)
-fps = 20
+fps = 30
 colors = {
     'black': (0, 0, 0),
     'white': (255, 255, 255)
@@ -54,7 +54,7 @@ class Bullet(Entity):
             self.sim.deregister(self.sim_id)
         for entity in self.sim.entities:
             if not isinstance(entity, Controllable) and not isinstance(entity, Bullet):
-                if sqrt(sum((entity.get('pos') - self.pos) ** 2)) <= entity.get('hit_radius'):
+                if sqrt(sum((entity.get('pos') - self.pos + np.asarray(self.appearance.get_size()) / 2) ** 2)) <= entity.get('hit_radius'):
                     self.sim.deregister(self.sim_id)
                     self.sim.deregister(entity.sim_id)
                     break
@@ -73,6 +73,7 @@ class Controllable(Entity):
 
 class Sim:
     def __init__(self, res):
+        self.res = res
         self.screen = pg.display.set_mode(res)
         self.clock = pg.time.Clock()
         self.entities = [Entity('sim/img/img1.png',
@@ -107,6 +108,7 @@ class Sim:
         return self.entities[id]
 
     def loop(self):
+        pg.font.init()
         counter_time = time()
         running = True
 
@@ -119,43 +121,56 @@ class Sim:
                                         self,
                                         init_pos=(np.array((240, 240)) - (120, 0))))
         self.get_entity(asteroid).set('on_deregister', print_hit)
-        ast_speed = .3
 
-        angles = []
-        speeds = [0]
-        decisions = []
-        hit = []
+        ast_speed = 0
+        bullets_per_second = 2
+
+        data = {}
 
         while running:
             try:
                 for event in pg.event.get():
                     if event.type == pg.QUIT:
                         running = False
+
+                    elif event.type == pg.MOUSEBUTTONDOWN:
+                        if pg.mouse.get_pressed()[0]:
+                            if time() - counter_time > 1. / bullets_per_second:
+                                counter_time = time()
+                                a = (_get_angle(pg.mouse.get_pos()))
+                                bullet_id = self.get_entity(char).fire(a, 7)
+
+                    elif event.type == pg.KEYDOWN:
+                        if event.key == pg.K_r:
+                            self = Sim(self.res)
+                            self.loop()
+                            running = False
+
             except SystemExit:
                 running = False
 
             self.clock.tick(fps)
-            if time() - counter_time > .25:
-                counter_time += .25
-                if self.get_entity(asteroid).get('displayable'):
-                    a = (_get_angle(self.get_entity(asteroid).get('pos')))
-                    self.get_entity(char).fire(a, 7)
             self.screen.fill(colors['white'])
+
+            # Draw helper lines
             pg.draw.line(self.screen, colors['black'], [0, 240], [480, 240])
             pg.draw.line(self.screen, colors['black'], [240, 0], [240, 480])
 
-            ast_speed = ast_speed if random() > .025 else -ast_speed
+            # Draw FPS counter
+            pg.draw.rect(self.screen, colors['black'], [400, 0, 480, 30])
+            font = pg.font.SysFont('arial', 15)
+            self.screen.blit(font.render(str(self.clock.get_fps()), 1, colors['white']), (400, 0))
+            # ast_speed = ast_speed if random() > .025 else -ast_speed
             self.get_entity(asteroid).set('pos',
                                           _radial(self.get_entity(asteroid).get('pos'), 2 * 3.141 / fps * ast_speed))
 
             self.sim()
-            angles.append(_get_angle(self.get_entity(asteroid).get('pos')))
             pg.display.flip()
 
 
 def _radial(pos, angle, center=[x / 2 for x in res]):
     functions = [cos, sin]
-    relational = pos - center
+    relational = pos - np.asarray(center)
     r = sqrt(sum((relational) ** 2))
     curr_angle = atan2(relational[1], relational[0])
 
@@ -163,7 +178,7 @@ def _radial(pos, angle, center=[x / 2 for x in res]):
 
 
 def _get_angle(pos, center=[x / 2 for x in res]):
-    relational = pos - center
+    relational = pos - np.asarray(center)
     return atan2(relational[1], relational[0])
 
 
