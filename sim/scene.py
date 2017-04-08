@@ -116,14 +116,14 @@ class Sim:
                                           self.screen,
                                           self,
                                           init_pos=(np.array((240, 240)))))
-        asteroid = self.register(Entity('sim/img/img1.png',
+        asteroid = self.register(Entity('sim/img/zybel.png',
                                         self.screen,
                                         self,
                                         init_pos=(np.array((240, 240)) - (120, 0))))
         self.get_entity(asteroid).set('on_deregister', print_hit)
 
-        ast_speed = 0
-        bullets_per_second = 2
+        ast_speed = .3
+        bullets_per_second = 3
 
         data = {}
 
