@@ -111,11 +111,12 @@ class CustomSim(Sim):
                 counter_time = time()
                 # a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(self.watcher.get(asteroid)).get('pos')),
                 #                                          self.watcher.get(2)]).reshape(-1, 2)]))
-                shoot_pos =
-                bullet_id = self.entities[char].fire(shoot_pos, 3.5)
+                shoot_vec = (random(), random()) * np.array(self.res) - self.entities[char].pos
+                shoot_vec = shoot_vec / sqrt(sum(shoot_vec ** 2))
+                bullet_id = self.entities[char].fire(shoot_vec, 3.5)
                 data[self.entities[bullet_id].get('sim_id')] = {
-                    'shoot_pos': shoot_pos,
-                    'ast_pos':
+                    'shoot_pos': shoot_vec,
+                    'ast_pos': None,
                     'hit': 0
                 }
                 bullet_counter += 1

@@ -74,9 +74,12 @@ class Bullet(Entity):
 
 
 class Controllable(Entity):
-    def fire(self, angle, bullet_speed):
-        fs = [cos, sin]
-        direction = [f(angle) * bullet_speed for f in fs]
+    def fire(self, fire_data, bullet_speed):
+        if isinstance(fire_data, float):
+            fs = [cos, sin]
+            direction = [f(fire_data) * bullet_speed for f in fs]
+        elif isinstance(fire_data, np.ndarray):
+            direction = fire_data * bullet_speed
         return self.sim.register(Bullet('sim/img/bullet.png',
                                         self.parent,
                                         self.sim,
