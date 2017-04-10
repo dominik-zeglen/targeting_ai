@@ -11,8 +11,6 @@ colors = {
 }
 
 
-
-
 class Entity:
     def __init__(self, *args, **kwargs):
         # img_path, parent, init_pos = (0, 0), init_rot = 0, init_scale = 1, init_speed = (0, 0)
@@ -26,6 +24,7 @@ class Entity:
         self.scale = kwargs['init_scale'] if 'init_scale' in kwargs else 0
         self.speed = np.asarray(kwargs['init_speed']) if 'init_speed' in kwargs else np.asarray((0, 0))
         self.hit_radius = sqrt(sum((np.asarray(self.original.get_size()) / 2) ** 2))
+        self.type = None
 
         self.on_deregister = lambda: None
         self.displayable = True
@@ -48,7 +47,6 @@ class Entity:
 
     def check_alive(self):
         if sum([True if coord > r or coord < -s else False for coord, r, s in zip(self.pos, self.sim.res, self.appearance.get_size())]):
-            print("killed lol")
             self.sim.deregister(self.sim_id)
             return False
         else:
