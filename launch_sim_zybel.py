@@ -4,7 +4,7 @@ import numpy as np
 from sim.sim import *
 from pygame.locals import *
 from time import time
-from ai import Agent
+from ai import AgentZybel as Agent
 from pickle import load, dump
 from random import random
 from math import sin, cos, sqrt, atan2, exp
@@ -12,7 +12,10 @@ from math import sin, cos, sqrt, atan2, exp
 
 class CustomSim(Sim):
     def loop(self):
-        def spawn_asteroid():
+        def spawn_asteroid(entity):
+            print(entity)
+            if entity != None:
+                self.deregister(entity)
             asteroid = self.register(Entity('sim/img/zybel.png',
                                             self.screen,
                                             self,
@@ -85,7 +88,7 @@ class CustomSim(Sim):
                                           self,
                                           init_pos=(np.array((240, 240)))))
 
-        asteroid = spawn_asteroid()
+        asteroid = spawn_asteroid(None)
 
         bullets_per_second = 1
         bullet_counter = 1
@@ -112,9 +115,9 @@ class CustomSim(Sim):
 
             if time() - counter_time > (1. / bullets_per_second) * 60 / fps:
                 counter_time = time()
-                a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(self.watcher.get(asteroid)).get('pos')),
-                                                         self.watcher.get(2)]).reshape(-1, 2)]))
-                # a = random() * 3.141 * 2
+                # a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(self.watcher.get(asteroid)).get('pos')),
+                #                                          self.watcher.get(2)]).reshape(-1, 2)]))
+                a = random() * 3.141 * 2
                 bullet_id = self.entities[char].fire(a, 3.5)
                 data[self.entities[bullet_id].get('sim_id')] = {
                     'shoot_angle': a,

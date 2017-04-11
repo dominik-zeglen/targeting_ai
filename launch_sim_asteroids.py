@@ -4,7 +4,7 @@ import numpy as np
 from sim.sim import *
 from pygame.locals import *
 from time import time
-from ai import Agent
+from ai import AgentAsteroids as Agent
 from pickle import load, dump
 from random import random
 from math import sin, cos, sqrt, atan2, exp
@@ -12,6 +12,12 @@ from math import sin, cos, sqrt, atan2, exp
 
 class CustomSim(Sim):
     def loop(self):
+        def asteroid_on_hit(bullet, asteroid):
+            print('Hit: %s' % self.get_entity(asteroid).sim_id)
+            self.deregister(asteroid)
+            self.deregister(bullet)
+            self.watcher.objects[3][bullet]['hit'] = 1
+
         def spawn_asteroid():
             asteroid = self.register(Entity('sim/img/zybel.png',
                                             self.screen,
@@ -22,8 +28,8 @@ class CustomSim(Sim):
                                                                     (np.asarray(
                                                                         self.entities[asteroid].original.get_size()) * (
                                                                          random() * .4 + 1)).astype('uint8'))
-            # self.entities[asteroid].set('on_deregister', spawn_asteroid)
-            self.type = 'asteroid'
+            self.entities[asteroid].set('on_hit', asteroid_on_hit)
+            self.entities[asteroid].set('type', 'asteroid')
             return self.watcher.update(0, self.entities[asteroid].sim_id)
 
         def _radial(pos, angle, center=[x / 2 for x in self.res], verbose=False):
@@ -104,11 +110,6 @@ class CustomSim(Sim):
                             self.loop()
                             running = False
 
-                    elif event.type == pg.MOUSEBUTTONDOWN:
-                        if pg.mouse.get_pressed()[0]:
-                            shoot_pos = pg.mouse.get_pos()
-                            print(shoot_pos)
-
             except SystemExit:
                 running = False
 
@@ -118,7 +119,10 @@ class CustomSim(Sim):
                 learning_time = time()
 
             if time() - counter_time > (1. / bullets_per_second) * 60 / fps:
-                if shoot_pos:
+                if pg.mouse.get_pressed()[0]:
+                    shoot_pos = pg.mouse.get_pos()
+                    print(shoot_pos)
+
                     counter_time = time()
                     # a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(self.watcher.get(asteroid)).get('pos')),
                     #                                          self.watcher.get(2)]).reshape(-1, 2)]))
@@ -126,9 +130,8 @@ class CustomSim(Sim):
                                 self.entities[char].pos
                     shoot_vec = shoot_vec / sqrt(sum(shoot_vec ** 2))
                     bullet_id = self.entities[char].fire(shoot_vec, 10)
-                    data[self.entities[bullet_id].get('sim_id')] = {
-                        'shoot_pos': shoot_vec,
-                        'ast_pos': None,
+                    data[self.entities[bullet_id].sim_id] = {
+                        'shoot_pos': shoot_pos,
                         'hit': 0
                     }
                     bullet_counter += 1

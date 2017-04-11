@@ -10,9 +10,50 @@ from time import time
 import matplotlib.pyplot as plt
 
 
-class Agent:
+class AgentZybel:
     def __init__(self):
         self.model = Model(degree=2)
+
+    def fit(self, data):
+        train = []
+        values = []
+        weights = []
+        missed = []
+        counter = 0
+        for bullet_id, bullet in data.items():
+            if bullet['hit']:
+                train.append([bullet['ast_angle'], bullet['ast_vel']])
+                values.append(bullet['shoot_angle'])
+                weights.append(counter)
+                counter = 0
+            else:
+                counter += .1
+                missed.append(bullet['ast_angle'])
+
+        train = np.asarray(train).reshape(-1, 2)
+        values = np.asarray(values).reshape(-1, 1)
+        missed = np.asarray(missed)
+
+        if False:
+            plt.hist(missed * 360 / 3.141 / 2, bins=24)
+            plt.savefig('sim/img/plots/%d.jpg' % time())
+            plt.clf()
+
+        self.model.fit(train, values, sample_weight=weights)
+
+        print('Succesful hits data / Total hits data: %d / %d' % (len(train[:, 0]), len(data)))
+        print('Expected accuracy: %.2f' % self.model.score(train, values))
+
+        return self
+
+    def predict(self, angle):
+        return self.model.predict(angle)
+
+
+class AgentAsteroids:
+    def __init__(self):
+        self.model_x = Model(degree=2)
+        self.model_y = Model(degree=2)
 
     def fit(self, data):
         train = []

@@ -26,7 +26,8 @@ class Entity:
         self.hit_radius = sqrt(sum((np.asarray(self.original.get_size()) / 2) ** 2))
         self.type = None
 
-        self.on_deregister = lambda: None
+        self.on_deregister = lambda x: None
+        self.on_hit = lambda x, y: None
         self.displayable = True
 
     def update(self):
@@ -63,9 +64,8 @@ class Bullet(Entity):
             if not isinstance(entity, Controllable) and not isinstance(entity, Bullet):
                 if sqrt(sum((entity.get('pos') - self.pos + np.asarray(
                         self.appearance.get_size()) / 2) ** 2)) <= entity.get('hit_radius'):
-                    self.sim.deregister(self.sim_id)
-                    self.sim.deregister(entity.sim_id)
-                    self.sim.watcher.objects[3][self.sim_id]['hit'] = 1
+                    entity.on_hit(self.sim_id, entity.sim_id)
+
                     return entity.sim_id
 
         return True
@@ -122,7 +122,7 @@ class Sim:
 
     def deregister(self, index):
         id = [i for i, x in enumerate(self.entities) if x.sim_id == index][0]
-        self.entities[id].on_deregister()
+        self.entities[id].on_deregister(self.entities[id])
         self.entities.pop(id)
 
     def sim(self):
