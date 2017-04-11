@@ -13,10 +13,11 @@ from math import sin, cos, sqrt, atan2, exp
 class CustomSim(Sim):
     def loop(self):
         def asteroid_on_hit(bullet, asteroid):
-            print('Hit: %s' % self.get_entity(asteroid).sim_id)
+            self.watcher.objects[3][bullet]['hit'] = 1
+            self.watcher.objects[3][bullet]['hit_asteroid_id'] = self.get_entity(asteroid).sim_id
             self.deregister(asteroid)
             self.deregister(bullet)
-            self.watcher.objects[3][bullet]['hit'] = 1
+            self.watcher.objects[1] += 1
 
         def spawn_asteroid():
             asteroid = self.register(Entity('sim/img/zybel.png',
@@ -55,16 +56,25 @@ class CustomSim(Sim):
 
         data = None
         try:
-            with open('sim/pickle_data/data.pck', 'rb+') as f:
+            with open('sim/pickle_data/data_asteroids.pck', 'rb+') as f:
                 try:
                     data = load(f)
                 except:
-                    data = {}
+                    data = {'0': {
+                        'shoot_pos': (0, 0),
+                        'n_asteroid_id': 0,
+                        'n_asteroid_pos': (0, 0),
+                        'n_asteroid_speed': (0, 0),
+                        'hit_asteroid_id': 0,
+                        'hit': 1
+                    }}
         except:
             data = {'0': {
-                'shoot_angle': 0,
-                'ast_angle': 0,
-                'ast_vel': 0,
+                'shoot_pos': (0, 0),
+                'n_asteroid_id': 0,
+                'n_asteroid_pos': (0, 0),
+                'n_asteroid_speed': (0, 0),
+                'hit_asteroid_id': 0,
                 'hit': 1
             }}
 
@@ -95,7 +105,7 @@ class CustomSim(Sim):
         scene = pg.image.load('sim/img/asteroids/scene.png')
 
         shoot_pos = None
-        bullets_per_second = 3
+        bullets_per_second = 2
         bullet_counter = 1
 
         while running:
@@ -119,25 +129,34 @@ class CustomSim(Sim):
                 learning_time = time()
 
             if time() - counter_time > (1. / bullets_per_second) * 60 / fps:
-                if pg.mouse.get_pressed()[0]:
-                    shoot_pos = pg.mouse.get_pos()
-                    print(shoot_pos)
-
+                asteroids = [(x.get('pos')[1], x.sim_id)
+                             for x in self.entities if x.type == 'asteroid']
+                n_asteroid = sorted(asteroids, key=lambda x: x[0])[-1] if len(asteroids) else None
+                if n_asteroid is not None:
                     counter_time = time()
-                    # a = agent.predict(np.hstack([np.asarray([_get_angle(self.get_entity(self.watcher.get(asteroid)).get('pos')),
-                    #                                          self.watcher.get(2)]).reshape(-1, 2)]))
-                    shoot_vec = (np.asarray(shoot_pos) if shoot_pos else (random(), random()) * np.array(self.res)) - \
-                                self.entities[char].pos
+
+                    shoot_pos = agent.predict(
+                        self.get_entity(n_asteroid[1]).get('pos') - self.entities[char].get('pos'),
+                        self.get_entity(n_asteroid[1]).get('speed')
+                    ) * self.res + self.entities[char].get('pos')
+
+                    # shoot_pos = (random(), random()) * np.array(self.res)
+
+                    shoot_vec = np.asarray(shoot_pos) - self.entities[char].pos
                     shoot_vec = shoot_vec / sqrt(sum(shoot_vec ** 2))
                     bullet_id = self.entities[char].fire(shoot_vec, 10)
                     data[self.entities[bullet_id].sim_id] = {
-                        'shoot_pos': shoot_pos,
+                        'shoot_pos': shoot_pos - self.entities[char].get('pos'),
+                        'n_asteroid_id': n_asteroid[1],
+                        'n_asteroid_pos': self.get_entity(n_asteroid[1]).get('pos') - self.entities[char].get('pos'),
+                        'n_asteroid_speed': self.get_entity(n_asteroid[1]).get('speed'),
+                        'hit_asteroid_id': '0',
                         'hit': 0
                     }
                     bullet_counter += 1
                     shoot_pos = None
 
-            if time() - spawner_time > .5:
+            if time() - spawner_time > .5 * 60 / fps:
                 spawner_time = time()
                 if random() > .2 \
                         and len([1 for x in self.entities if x.type == 'asteroid']) < (time() - start_time) / 60 \
@@ -156,14 +175,14 @@ class CustomSim(Sim):
 
             # Draw kill counter
             pg.draw.rect(self.screen, colors['black'], [0, 0, 80, 30])
-            self.screen.blit(font.render(str(self.watcher.get(1) * 1. / bullet_counter), 1, colors['white']), (0, 0))
+            self.screen.blit(font.render(str(self.watcher.get(1)), 1, colors['white']), (0, 0))
 
             self.sim()
             pg.display.flip()
 
-            # with open('sim/pickle_data/data.pck', 'wb+') as f:
-            #     print('Dumping')
-            #     dump(data, f)
+        with open('sim/pickle_data/data_asteroids.pck', 'wb+') as f:
+            print('Dumping')
+            dump(data, f)
 
 
 sim = CustomSim((480, 480))

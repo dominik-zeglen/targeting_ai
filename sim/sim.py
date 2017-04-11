@@ -40,6 +40,8 @@ class Entity:
         return self
 
     def get(self, attr):
+        if isinstance(attr, list) or isinstance(attr, tuple):
+            return [getattr(self, x) for x in attr]
         return getattr(self, attr)
 
     def display(self):
